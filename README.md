@@ -1,1 +1,1 @@
-# easy-study
+# Easy-study
