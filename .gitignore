@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+
+# Runtime data (recreated at run time; never commit)
+runtime/state/
+runtime/cache/
+runtime/logs/
+runtime/sandbox/

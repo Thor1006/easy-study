@@ -1,0 +1,23 @@
+# Implementation decisions (v1)
+
+This file records choices made while implementing Glass Membrane v1. **None of these are architecture decisions.** The canonical specification is `Glass_Membrane_Architecture.md`, with `GLASS_MEMBRANE_FULL_SCHEMATIC.md` and `CLAUDE_AGENT_OPERATING_INSTRUCTIONS.md` as companions. Where this file and those documents differ, the documents win, and the discrepancy should be raised with the project owner rather than silently resolved (Schematic §17, Ops §18).
+
+Each entry states what was chosen, why, and what would change it.
+
+| # | Decision | Why | Revisit when |
+|---|---|---|---|
+| D1 | Python ≥ 3.11, standard library only at runtime; `pytest` for tests | Owner preference; no install friction; `asyncio` fits concurrent cores; `tomllib` for config | A dependency brings clear value (e.g. a real database) |
+| D2 | Single-process runtime host on one `asyncio` loop; kernel components are modules, not services | Spec: logical boundaries need not be separate processes (Arch §3) | Multi-machine or multi-user operation |
+| D3 | Write-ahead journal = append-only JSONL with `fsync`, two records per transaction (`begin` with ops, then `commit`); replay applies only committed, not-yet-applied sequence numbers; checkpoints are JSON snapshots with `last_seq` | Makes "committed vs incomplete attempt" explicit (Arch §13) with no dependencies | Throughput or concurrent writers require SQLite or similar |
+| D4 | Optimistic validation: every result proposal carries the node's contract version, lease id, and the dependency result refs it consumed; commit requires all three to match current state | Implements "stale proposal is rejected or reconsidered, never silently accepted" (Arch §12) | — |
+| D5 | Task state has a `version` bumped by constraint changes (steers); each node has a `contract_version`. Unaffected nodes keep their contract version, so their late results remain acceptable | Preserves unaffected work during steering (Arch §11) | Finer-grained dependency tracking is needed |
+| D6 | Model backends are the **Claude Code CLI** (`claude -p`) and **Codex CLI** (`codex exec`) using the owner's subscription logins, invoked as one short-lived subprocess per call | Owner request; CLIs expose structured output, usage, and native subagents | An API-key adapter or local model is wanted |
+| D7 | Claude calls do **not** use `--bare` (it does not read subscription credentials) and run in an empty sandbox directory so no project hooks/MCP servers load | Documented `-p` behaviour (code.claude.com/docs/en/headless) | — |
+| D8 | Concurrency is elastic: processes start per call and exit when done. Provider ceilings default to **12 per provider** (owner's choice — not a documented safe limit). One slot per provider is held as control headroom | Owner request; "2x2" must use one process | `gm probe` shows the plans sustain less or more |
+| D9 | Rate-limit handling: multiplicative decrease of that provider's effective cap on a rate-limit signal, additive recovery on success | Standard congestion-control behaviour; no vendor-published limits | Real probe data suggests a better policy |
+| D10 | Capability tiers are named `efficiency`, `performance`, `flagship` for both the front end (R0–R3, R4–R5, R6–R7) and cores (E, P, F) | Keeps one vocabulary for the registry | — |
+| D11 | Filter answer threshold and routing threshold live in `runtime/config/models.toml`; shipped values are placeholders to be evaluated, not calibrated constants (Arch §4, §19) | Spec leaves thresholds to evaluation | Evaluation data exists |
+| D12 | Swarm grants are enforced through provider settings: Claude `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` + `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`; Codex `agents.max_concurrent_threads_per_session`. Grant 0 removes the Agent tool / disables `multi_agent` | Uses documented, provider-enforced limits rather than prompt compliance | A provider changes these controls |
+| D13 | Silicate is a local web app: stdlib `http.server` + Server-Sent Events, static HTML/CSS/JS, bound to 127.0.0.1, POSTs require a per-session token | No Node or build step; works on any browser | A desktop wrapper or multi-user access is wanted |
+| D14 | A `--fake` demo mode uses a deterministic simulated adapter so the UI and runtime can be explored with zero subscription usage | Ops §1: documentation does not authorise spending | — |
+| D15 | Role instructions live in `runtime/skills/*.md`, derived from Ops §7, and are sent as the system prompt (Claude) or prepended to the prompt (Codex, which has no system-prompt flag in `exec`) | Schematic §14 places role instructions in `runtime/skills/` | — |
