@@ -7,7 +7,35 @@ provider does not expose is `None` (unknown), never zero.
 
 from __future__ import annotations
 
+import re
+import time
 from dataclasses import asdict, dataclass, field
+
+_RESET_AT = re.compile(r"(?:try again (?:at|after)|resets?(?: at)?)\s+(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?", re.I)
+
+
+def quota_reset_time(text: str, now: float | None = None) -> float | None:
+    """If a provider message says a usage limit was hit, return when to try again (epoch seconds).
+
+    Parses "try again at 5:19 PM" / "resets 5pm" in local time; falls back to 30 minutes.
+    Returns None when the message is not about an exhausted usage allowance.
+    """
+    low = (text or "").lower()
+    if "usage limit" not in low and "quota" not in low:
+        return None
+    now = time.time() if now is None else now
+    match = _RESET_AT.search(text)
+    if not match:
+        return now + 1800
+    hour, minute = int(match.group(1)), int(match.group(2) or 0)
+    meridiem = (match.group(3) or "").lower().replace(".", "")
+    if meridiem == "pm" and hour < 12:
+        hour += 12
+    if meridiem == "am" and hour == 12:
+        hour = 0
+    local = time.localtime(now)
+    target = time.mktime((local.tm_year, local.tm_mon, local.tm_mday, hour, minute, 0, 0, 0, -1))
+    return target + 86400 if target <= now else target
 
 
 @dataclass
@@ -57,6 +85,7 @@ class ModelResult:
     detail: str = ""
     rate_limited: bool = False
     duration_s: float = 0.0
+    retry_after: float | None = None   # epoch seconds: the provider's usage allowance is exhausted until then
 
 
 class ModelAdapter:

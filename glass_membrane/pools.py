@@ -25,7 +25,16 @@ class ProviderPool:
         self.peak = 0
         self.rate_limit_events = 0
         self.last_cut = 0.0
+        self.unavailable_until = 0.0   # usage allowance exhausted until this time (epoch seconds)
         self._successes = 0
+
+    @property
+    def available(self) -> bool:
+        return time.time() >= self.unavailable_until
+
+    def mark_unavailable(self, until: float) -> None:
+        self.unavailable_until = max(self.unavailable_until, until)
+        self.rate_limit_events += 1
 
     def limit(self, priority: str) -> int:
         if priority == "control" or self.cap <= 1:
@@ -33,6 +42,8 @@ class ProviderPool:
         return self.cap - min(self.headroom, self.cap - 1)
 
     def try_acquire(self, priority: str = "work") -> bool:
+        if not self.available:
+            return False
         if self.live < self.limit(priority):
             self.live += 1
             self.peak = max(self.peak, self.live)
@@ -62,7 +73,8 @@ class ProviderPool:
     def snapshot(self) -> dict:
         return {"provider": self.provider, "live": self.live, "cap": self.cap, "ceiling": self.ceiling,
                 "peak": self.peak, "work_limit": self.limit("work"),
-                "rate_limit_events": self.rate_limit_events, "backing_off": self.cap < self.ceiling}
+                "rate_limit_events": self.rate_limit_events, "backing_off": self.cap < self.ceiling,
+                "unavailable_until": None if self.available else self.unavailable_until}
 
 
 class Pools:
@@ -95,11 +107,22 @@ class Pools:
         if provider in self.pools:
             self.pools[provider].on_success()
 
+    def mark_unavailable(self, provider: str, until: float) -> None:
+        if provider in self.pools:
+            self.pools[provider].mark_unavailable(until)
+
+    def available(self, provider: str) -> bool:
+        pool = self.pools.get(provider)
+        return bool(pool and pool.available)
+
     def recover(self) -> None:
         now = time.time()
         for pool in self.pools.values():
             before = pool.cap
             pool.recover(now)
+            if pool.unavailable_until and now >= pool.unavailable_until:
+                pool.unavailable_until = 0.0
+                self.signal.notify()
             if pool.cap != before:
                 self.signal.notify()
 

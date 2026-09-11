@@ -23,7 +23,7 @@ const EVENT_LABEL = {
   SWARM_REQUEST: "Swarm", SUBTASK_REQUEST: "Subtask", CAP_CHANGED: "Agent limit", rate_limited: "Rate limit",
   CORE_FAILED: "Core failed", core_failed: "Provider error", core_cancelled: "Cancelled", retry: "Retry",
   graph_committed: "Plan", graph_rejected: "Plan rejected", run_done: "Done", run_failed: "Failed",
-  CANCEL: "Cancel", swarm_violation: "Swarm limit", experiment: "Experiment",
+  CANCEL: "Cancel", swarm_violation: "Swarm limit", experiment: "Experiment", provider_unavailable: "Out of quota",
 };
 const NODE_W = 200, NODE_H = 62, COL_GAP = 60, ROW_GAP = 16, PAD = 12;
 
@@ -69,6 +69,7 @@ const runs = () => (ui.snapshot ? ui.snapshot.runs : []);
 const currentRun = () => runs().find(r => r.id === ui.selected) || null;
 const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 const fmtClock = ts => new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const fmtHM = ts => new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
 async function api(path, body) {
   const init = body === undefined ? {} : {
@@ -155,11 +156,14 @@ function renderHeader() {
     fill.style.width = `${pool.ceiling ? (pool.live / pool.ceiling) * 100 : 0}%`;
     mark.style.left = `${pool.ceiling ? (pool.cap / pool.ceiling) * 100 : 100}%`;
     mark.hidden = pool.cap >= pool.ceiling;
-    const tip = `${label(name)}: ${pool.live} live now · cap ${pool.cap} of ${pool.ceiling}` +
+    const outUntil = pool.unavailable_until ? fmtHM(pool.unavailable_until) : null;
+    const tip = `${label(name)}: ` +
+      (outUntil ? `usage allowance exhausted until ${outUntil} — work goes to other providers`
+        : `${pool.live} live now · cap ${pool.cap} of ${pool.ceiling}`) +
       (pool.backing_off ? " · backing off after a rate limit" : "") + ` · peak ${pool.peak}`;
-    return h("div", { class: `meter ${pool.backing_off ? "warn" : ""}`, title: tip },
+    return h("div", { class: `meter ${pool.backing_off || outUntil ? "warn" : ""}`, title: tip },
       h("span", { class: "meter-name", text: label(name) }),
-      h("span", { class: "meter-count", text: `${pool.live}/${pool.cap}` }),
+      h("span", { class: "meter-count", text: outUntil ? `out until ${outUntil}` : `${pool.live}/${pool.cap}` }),
       h("span", { class: "bar" }, fill, mark));
   }));
 }

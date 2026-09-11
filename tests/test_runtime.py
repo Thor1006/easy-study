@@ -326,6 +326,33 @@ def test_rate_limit_lowers_only_that_providers_cap_and_shifts_work(tmp_path):
     assert rt.state.task(run.task_id)["nodes"]["work"]["binding"]["provider"] == "claude"
 
 
+def test_exhausted_quota_takes_a_provider_out_without_retry_storms(tmp_path):
+    def codex_brain(inv):
+        if inv.role != "router":
+            return ModelResult(ok=False, rate_limited=True, retry_after=time.time() + 600,
+                               failure="TOOL_FAILURE", detail="You've hit your usage limit.")
+        return simulated_brain(inv)
+
+    rt = make_rt(tmp_path, brains={"codex": codex_brain})
+    run = run_once(rt, SINGLE)
+    assert run.status == "done", run.error
+    assert not rt.pools.available("codex")
+    assert len([c for c in rt.adapters["codex"].calls if c.role != "router"]) == 1, "no retries on an exhausted provider"
+    assert rt.state.task(run.task_id)["nodes"]["work"]["binding"]["provider"] == "claude"
+    assert any(e["type"] == "provider_unavailable" for e in rt.events)
+
+
+def test_run_fails_clearly_when_every_provider_is_out_of_quota(tmp_path):
+    def exhausted(inv):
+        return ModelResult(ok=False, rate_limited=True, retry_after=time.time() + 600,
+                           failure="TOOL_FAILURE", detail="You've hit your usage limit.")
+
+    rt = make_rt(tmp_path, brain=exhausted)
+    run = run_once(rt, SINGLE)
+    assert run.status == "failed" and "out of quota" in run.error
+    assert len(calls(rt)) == 2, "one filter call per provider, then a clear failure"
+
+
 def test_provider_failure_rebinds_to_the_other_provider(tmp_path):
     def claude_brain(inv):
         if inv.role == "efficiency":

@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 from ..refs import new_id
-from .base import Invocation, ModelAdapter, ModelResult, Usage
+from .base import Invocation, ModelAdapter, ModelResult, Usage, quota_reset_time
 from .claude_code import parse_json_object
 from .process import resolve_command, run_process
 
@@ -69,12 +69,15 @@ def interpret(info: dict, last_message: str | None, returncode: int | None, stde
     if returncode not in (0, None) or info["errors"] or output is None:
         detail = "; ".join(info["errors"]) or stderr[-800:] or (f"exit code {returncode}" if returncode else
                                                                "no structured output in the final message")
-        rate_limited = any(word in f"{detail} {stderr[-800:]}".lower() for word in _RATE_WORDS)
+        retry_after = quota_reset_time(f"{detail} {stderr[-800:]}")
+        rate_limited = retry_after is not None or any(
+            word in f"{detail} {stderr[-800:]}".lower() for word in _RATE_WORDS)
         if output is not None and returncode in (0, None) and not rate_limited:
             pass  # a recovered error with a valid final message still counts as a result
         else:
             return ModelResult(ok=False, failure="TOOL_FAILURE", detail=detail[:1000], rate_limited=rate_limited,
-                               raw_text=text[:2000], usage=usage, children_spawned=children, duration_s=duration)
+                               retry_after=retry_after, raw_text=text[:2000], usage=usage,
+                               children_spawned=children, duration_s=duration)
     return ModelResult(ok=True, output=output, raw_text=text, usage=usage, children_spawned=children,
                        duration_s=duration)
 

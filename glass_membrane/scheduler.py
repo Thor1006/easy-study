@@ -112,6 +112,12 @@ class Scheduler:
                 return
             binding = self._acquire_binding(node["tier"], avoid=node.get("avoid_provider"))
             if binding is None:
+                candidates = rt.registry.bindings(node["tier"])
+                if candidates and not any(rt.pools.available(b.provider) for b in candidates):
+                    until = min(rt.pools.pools[b.provider].unavailable_until for b in candidates)
+                    self._fail(run, task_id, [], FailureCode.BUDGET_EXHAUSTED.value,
+                               f"every provider for the {node['tier']} tier is out of quota until "
+                               f"{time.strftime('%H:%M', time.localtime(until))}")
                 return
             grant = 0
             swarm = node.get("swarm_request")
@@ -256,11 +262,20 @@ class Scheduler:
         owner = node is not None and node["lease_id"] == lease_id and rt.state.lease_is_live(lease_id)
 
         if result.rate_limited:
-            rt.pools.on_rate_limit(binding.provider)
-            cap = rt.pools.pools[binding.provider].cap
-            rt.emit("rate_limited", run=run.id, task=task_id, node=nid,
-                    message=f"{binding.provider} is rate limiting; its cap is now {cap} and work shifts elsewhere",
-                    status=f"{binding.provider} is busy — shifting work", data={"provider": binding.provider, "cap": cap})
+            if result.retry_after:
+                rt.pools.mark_unavailable(binding.provider, result.retry_after)
+                until = time.strftime("%H:%M", time.localtime(result.retry_after))
+                rt.emit("provider_unavailable", run=run.id, task=task_id, node=nid,
+                        message=f"{binding.provider} is out of quota until {until}; shifting work to other providers",
+                        status=f"{binding.provider} is out of quota — shifting work",
+                        data={"provider": binding.provider, "until": result.retry_after})
+            else:
+                rt.pools.on_rate_limit(binding.provider)
+                cap = rt.pools.pools[binding.provider].cap
+                rt.emit("rate_limited", run=run.id, task=task_id, node=nid,
+                        message=f"{binding.provider} is rate limiting; its cap is now {cap} and work shifts elsewhere",
+                        status=f"{binding.provider} is busy — shifting work",
+                        data={"provider": binding.provider, "cap": cap})
             if owner:
                 self._requeue(task_id, nid, lease_id, "provider rate limited",
                               fields={"avoid_provider": binding.provider}, count_attempt=False)

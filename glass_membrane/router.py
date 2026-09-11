@@ -9,6 +9,7 @@ scheduler, never an allocation.
 
 from __future__ import annotations
 
+import time
 from dataclasses import asdict, dataclass, field
 
 from .adapters.base import Invocation
@@ -77,11 +78,14 @@ class Router:
             await self.rt.signal.wait(timeout=1.0, since=since)
 
     async def _take_process(self, tier: str):
+        """A provider process slot for this tier, or None if every provider for it is out of quota."""
         bindings = self.rt.registry.bindings(tier)
         while True:
             for binding in bindings:
                 if self.rt.pools.try_acquire(binding.provider, "control"):
                     return binding
+            if not any(self.rt.pools.available(b.provider) for b in bindings):
+                return None
             since = self.rt.signal.version
             await self.rt.signal.wait(timeout=1.0, since=since)
 
@@ -99,6 +103,8 @@ class Router:
             binding = None
             try:
                 binding = await self._take_process(tier)
+                if binding is None:
+                    continue  # (finally frees the slot) every provider for this tier is out of quota
                 rt.slots.update(slot.id, binding=binding.to_dict())
                 run.live_processes += 1
                 run.peak_processes = max(run.peak_processes, run.live_processes)
@@ -126,7 +132,13 @@ class Router:
             rt.ledger.record(run_id=run.id, provider=binding.provider, model=binding.model, label=slot.id,
                              kind="filter", usage=result.usage, children=result.children_spawned,
                              duration_s=result.duration_s, ok=result.ok, failure=result.failure)
-            if result.rate_limited:
+            if result.retry_after:
+                rt.pools.mark_unavailable(binding.provider, result.retry_after)
+                rt.emit("provider_unavailable", run=run.id,
+                        message=f"{binding.provider} is out of quota until "
+                                f"{time.strftime('%H:%M', time.localtime(result.retry_after))}; using other providers",
+                        data={"provider": binding.provider, "until": result.retry_after})
+            elif result.rate_limited:
                 rt.pools.on_rate_limit(binding.provider)
             out = result.output if result.ok and isinstance(result.output, dict) else None
             attempt = {"tier": tier, "slot": slot.id, "provider": binding.provider, "ok": bool(out),

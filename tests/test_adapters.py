@@ -10,7 +10,7 @@ import sys
 import textwrap
 import time
 
-from glass_membrane.adapters.base import Invocation
+from glass_membrane.adapters.base import Invocation, quota_reset_time
 from glass_membrane.adapters.claude_code import ClaudeCodeAdapter, parse_claude_stream
 from glass_membrane.adapters.claude_code import interpret as claude_interpret
 from glass_membrane.adapters.codex import CodexAdapter, parse_codex_events
@@ -124,6 +124,31 @@ def test_codex_events_usage_and_failures():
                                                              "error": {"message": "You've hit your usage limit"}})]),
                              None, 1, "", False, 30, 0, 1.0)
     assert not failed.ok and failed.rate_limited
+
+
+CODEX_LIMIT = ("You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit "
+               "https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 5:19 PM.")
+
+
+def test_usage_limit_message_gives_a_reset_time():
+    noon = time.mktime(time.localtime()[:3] + (12, 0, 0, 0, 0, -1))
+    reset = quota_reset_time(CODEX_LIMIT, now=noon)
+    assert time.localtime(reset)[3:5] == (17, 19)
+    assert quota_reset_time("You've hit your usage limit.", now=noon) == noon + 1800
+    assert quota_reset_time("429 Too Many Requests", now=noon) is None
+
+
+def test_codex_usage_limit_is_flagged_with_reset_time():
+    info = parse_codex_events([json.dumps({"type": "turn.failed", "error": {"message": CODEX_LIMIT}})])
+    result = codex_interpret(info, None, 1, "", False, 30, 0, 1.0)
+    assert not result.ok and result.rate_limited and result.retry_after is not None
+
+
+def test_claude_child_count_prefers_cli_subagent_stats():
+    final = {"type": "result", "subtype": "success", "is_error": False,
+             "structured_output": {"answer": "x"}, "subagent_stats": {"spawned": 2}}
+    info = parse_claude_stream([json.dumps(final)])
+    assert claude_interpret(info, 0, "", False, 30, 1.0).children_spawned == 2
 
 
 # ---------------------------------------------------------------- process runner

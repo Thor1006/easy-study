@@ -18,7 +18,7 @@ import re
 import time
 from pathlib import Path
 
-from .base import Invocation, ModelAdapter, ModelResult, Usage
+from .base import Invocation, ModelAdapter, ModelResult, Usage, quota_reset_time
 from .process import resolve_command, run_process
 
 _RATE_WORDS = ("rate_limit", "rate limit", "429", "usage limit", "too many requests")
@@ -99,6 +99,9 @@ def interpret(info: dict, returncode: int | None, stderr: str, timed_out: bool, 
     final = info["result"]
     usage = usage_from_result(final)
     children = info["children"]
+    stats = (final or {}).get("subagent_stats")
+    if isinstance(stats, dict) and isinstance(stats.get("spawned"), int):
+        children = stats["spawned"]  # reported by the CLI itself (observed on Claude Code 2.1.267)
     if timed_out:
         return ModelResult(ok=False, failure="TOOL_FAILURE", detail=f"timed out after {timeout_s:g}s",
                            usage=usage, children_spawned=children, duration_s=duration)
@@ -106,11 +109,12 @@ def interpret(info: dict, returncode: int | None, stderr: str, timed_out: bool, 
         detail = str((final or {}).get("result") or (final or {}).get("subtype") or stderr[-800:]
                      or f"exit code {returncode}")
         text = f"{detail} {(final or {}).get('subtype', '')} {stderr[-800:]}".lower()
-        rate_limited = any(word in text for word in _RATE_WORDS) or (
+        retry_after = quota_reset_time(f"{detail} {stderr[-800:]}")
+        rate_limited = retry_after is not None or any(word in text for word in _RATE_WORDS) or (
             final is None and info["rate_limit_retries"] > 0)
         failure = "BUDGET_EXHAUSTED" if (final or {}).get("subtype") == "error_max_budget_usd" else "TOOL_FAILURE"
         return ModelResult(ok=False, failure=failure, detail=detail[:1000], rate_limited=rate_limited,
-                           usage=usage, children_spawned=children, duration_s=duration)
+                           retry_after=retry_after, usage=usage, children_spawned=children, duration_s=duration)
     output = final.get("structured_output")
     if not isinstance(output, dict):
         output = parse_json_object(final.get("result"))
@@ -124,7 +128,8 @@ def interpret(info: dict, returncode: int | None, stderr: str, timed_out: bool, 
 
 class ClaudeCodeAdapter(ModelAdapter):
     provider = "claude"
-    provenance = "Claude Code CLI headless mode (documented); run `gm probe` to measure on your plan"
+    provenance = ("Claude Code CLI headless mode (documented); stdin prompt, structured output, and modelUsage "
+                  "measured in a live check on 2026-09-11 (Claude Code 2.1.267); run `gm probe` for capacity")
 
     def __init__(self, command: str = "claude", sandbox_dir: str | Path = "runtime/sandbox/claude", *,
                  setting_sources: str | None = "local", keep_api_key_env: bool = False) -> None:
@@ -133,7 +138,7 @@ class ClaudeCodeAdapter(ModelAdapter):
         self.sandbox.mkdir(parents=True, exist_ok=True)
         self.setting_sources = setting_sources
         self.keep_api_key_env = keep_api_key_env
-        self.capabilities = {"structured_output": "documented", "swarm": "documented", "usage": "documented",
+        self.capabilities = {"structured_output": "measured", "swarm": "documented", "usage": "measured",
                              "child_usage": "documented (modelUsage)", "cancellation": "process kill"}
 
     def build(self, inv: Invocation) -> tuple[list[str], dict[str, str]]:
