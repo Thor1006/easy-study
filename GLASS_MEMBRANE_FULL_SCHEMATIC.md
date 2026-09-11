@@ -22,7 +22,7 @@ Scope derives from the recovered **ChatGPT Cursor Control** conversation and the
      |                                                      |
      v                                                      |
  EIGHT-SLOT FRONT END                                       |
- R0 R1 R2 R3: efficiency -> R4 R5: intermediate -> R6 R7: strong
+ EF0 EF1 EF2 EF3: efficient filter -> PF0 PF1: performance filter -> FF0 FF1: flagship filter
      | answer confidence / routing confidence                |
      +--> suitable answer proposal -> validation -> output    |
      |                                                      |

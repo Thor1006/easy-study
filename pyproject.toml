@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glass-membrane"
+version = "0.1.0"
+description = "Glass Membrane v1 kernel: a model-agnostic adaptive AI runtime, with the Silicate operator UI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+gm = "glass_membrane.cli:main"
+
+[tool.setuptools]
+packages = ["glass_membrane", "glass_membrane.adapters"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

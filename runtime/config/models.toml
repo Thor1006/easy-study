@@ -1,0 +1,56 @@
+# Glass Membrane runtime configuration (implementation choices — see docs/IMPLEMENTATION_DECISIONS.md).
+# Thresholds and limits here are starting values to be evaluated, not calibrated constants (Arch §4, §19).
+
+[providers.claude]
+command = "claude"
+max_processes = 12   # owner's chosen ceiling; not a vendor-documented safe limit
+
+[providers.codex]
+command = "codex"
+max_processes = 12
+
+# Capability tiers -> ordered bindings. The scheduler uses the first binding whose
+# provider has capacity, so load shifts between providers automatically.
+# Codex bindings leave `model` unset so Codex uses the model configured for your account.
+[tiers.efficiency]
+bindings = [
+  { provider = "claude", model = "haiku" },
+  { provider = "codex", effort = "low" },
+]
+
+[tiers.performance]
+bindings = [
+  { provider = "codex", effort = "medium" },
+  { provider = "claude", model = "sonnet", effort = "medium" },
+]
+
+[tiers.flagship]
+bindings = [
+  { provider = "claude", model = "opus", effort = "high" },
+  { provider = "codex", effort = "high" },
+]
+
+[filter]
+answer_threshold = 0.85    # a filter answer below this escalates to the next slot class
+routing_threshold = 0.7    # a routing packet below this escalates to the next slot class
+
+[runtime]
+call_timeout_s = 300
+lease_ttl_s = 360
+max_nodes = 24
+max_attempts = 3
+max_escalations = 2
+control_headroom = 1       # slots per provider that cores may never take (reserved for filter/steer)
+cancel_in_flight = true    # kill a provider process whose work a steer made obsolete
+heartbeat = true
+watchdog_interval_s = 0.5
+context_max_chars = 12000
+
+[swarm]
+max_children_total = 12
+max_children_per_core = 4
+prefer_idle_cores = true   # redirect child requests to idle logical cores first (Arch §7)
+
+[budget]
+max_calls_per_run = 60
+max_usd_per_call = 2.0     # passed to `claude --max-budget-usd` (a client-side estimate)
