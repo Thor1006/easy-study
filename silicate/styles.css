@@ -334,6 +334,7 @@ tr.clickable:hover td { background: var(--accent-soft); }
 }
 @media (max-width: 760px) {
   html, body { height: auto; }
+  .topbar { position: static; gap: 10px; }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .conversation { max-height: none; }
   .messages { max-height: 55vh; }

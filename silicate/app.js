@@ -326,7 +326,7 @@ function drawGraph(task) {
   root.append(edges);
   for (const n of Object.values(nodes)) {
     const p = pos[n.id];
-    const rerun = n.superseded_results.length > 0 || n.rejections.length > 0;
+    const rerun = n.attempt > 0 || n.superseded_results.length > 0 || n.rejections.length > 0;
     const who = n.binding && n.phase !== "waiting" && n.phase !== "ready"
       ? ` · ${label(n.binding.provider)}${n.binding.model ? ` ${n.binding.model}` : ""}` : "";
     const g = svg("g", {
