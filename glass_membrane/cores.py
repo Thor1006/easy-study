@@ -14,8 +14,9 @@ from .blackboard import TIERS
 CORE_LAYOUT = [("E0", "efficiency"), ("E1", "efficiency"), ("E2", "efficiency"), ("E3", "efficiency"),
                ("E4", "efficiency"), ("E5", "efficiency"), ("P0", "performance"), ("P1", "performance"),
                ("P2", "performance"), ("P3", "performance"), ("F0", "flagship"), ("F1", "flagship")]
-FILTER_LAYOUT = [("R0", "efficiency"), ("R1", "efficiency"), ("R2", "efficiency"), ("R3", "efficiency"),
-                 ("R4", "performance"), ("R5", "performance"), ("R6", "flagship"), ("R7", "flagship")]
+# EF = efficient filter, PF = performance filter, FF = flagship filter (Schematic §2).
+FILTER_LAYOUT = [("EF0", "efficiency"), ("EF1", "efficiency"), ("EF2", "efficiency"), ("EF3", "efficiency"),
+                 ("PF0", "performance"), ("PF1", "performance"), ("FF0", "flagship"), ("FF1", "flagship")]
 
 
 @dataclass

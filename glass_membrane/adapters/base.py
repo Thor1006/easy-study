@@ -59,7 +59,7 @@ class Usage:
 @dataclass
 class Invocation:
     run_id: str
-    label: str                     # slot or core id, e.g. "R1" or "P2"
+    label: str                     # slot or core id, e.g. "EF1" or "P2"
     role: str
     system_prompt: str
     prompt: str

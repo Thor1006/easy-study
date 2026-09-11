@@ -1,6 +1,7 @@
 """Eight-slot filter/router front end (Arch §4, Ops §7).
 
-R0–R3 efficiency, R4–R5 performance (intermediate), R6–R7 flagship (strong).
+EF0–EF3 efficient filters, PF0–PF1 performance (intermediate) filters, FF0–FF1
+flagship (strong) filters.
 For one input the cascade is sequential: the cheapest suitable slot first,
 escalating only when its answer or routing confidence is below threshold.
 The filter may answer easy requests directly; its packet is advice to the

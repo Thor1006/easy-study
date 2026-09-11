@@ -254,7 +254,7 @@ def test_low_confidence_answer_escalates_before_being_returned(tmp_path):
         return simulated_brain(inv)
 
     run = run_once(make_rt(tmp_path, brain=brain), "What is the capital of France?")
-    assert run.answer == "Paris" and run.answered_by == "filter · R4 performance"
+    assert run.answer == "Paris" and run.answered_by == "filter · PF0 performance"
     assert len(run.route["attempts"]) == 2
 
 
