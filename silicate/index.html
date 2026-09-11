@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="gm-token" content="{{GM_TOKEN}}">
+  <title>Silicate · Glass Membrane</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 29 9.5v13L16 30 3 22.5v-13z' fill='%236ea8ff' fill-opacity='.35' stroke='%232f6fed' stroke-width='2'/%3E%3Cpath d='M16 9 23 13v7l-7 4-7-4v-7z' fill='%232f6fed'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div class="brand-text">
+        <strong>Silicate</strong>
+        <span class="sub">Glass Membrane operator</span>
+      </div>
+    </div>
+    <span id="mode-badge" class="badge" hidden></span>
+    <div id="provider-meters" class="meters" aria-label="Live provider processes"></div>
+    <span id="conn" class="conn" role="status">Connecting…</span>
+    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch light or dark theme">◐</button>
+  </header>
+
+  <main class="layout">
+    <section class="panel conversation" aria-labelledby="conv-title">
+      <div class="panel-head"><h2 id="conv-title">Conversation</h2></div>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <form id="composer" class="composer" autocomplete="off">
+        <div id="mode-switch" class="segmented" role="radiogroup" aria-label="What to do with your message" hidden>
+          <button type="button" role="radio" data-mode="steer">Steer this run</button>
+          <button type="button" role="radio" data-mode="new">New request</button>
+        </div>
+        <textarea id="input" rows="3" aria-label="Message"
+                  placeholder="Ask anything — easy questions are answered directly by the filter"></textarea>
+        <div class="composer-row">
+          <label class="agent-limit">Agent limit
+            <input id="max-agents" type="number" min="1" max="24" placeholder="auto" inputmode="numeric">
+          </label>
+          <button id="send" type="submit" class="primary">Send</button>
+        </div>
+        <p class="hint">Enter to send · Shift+Enter for a new line</p>
+      </form>
+    </section>
+
+    <section class="panel map" aria-labelledby="map-title">
+      <div class="panel-head">
+        <h2 id="map-title">Live map</h2>
+        <span id="run-meta" class="meta"></span>
+      </div>
+      <div id="status-line" class="status-line" role="status">Waiting for your first request.</div>
+      <div id="constraints" class="constraints"></div>
+      <div class="map-body">
+        <div id="graph" class="graph"></div>
+        <aside id="node-detail" class="node-detail" aria-label="Node details" hidden></aside>
+      </div>
+    </section>
+
+    <section class="panel agents" aria-labelledby="agents-title">
+      <div class="panel-head">
+        <h2 id="agents-title">Agents</h2>
+        <span id="agent-summary" class="meta"></span>
+      </div>
+      <div class="agents-body">
+        <h3>Filter slots <span class="meta">front end · 8</span></h3>
+        <div id="filter-slots" class="slot-grid"></div>
+        <h3>Reasoning cores <span class="meta">12 logical slots</span></h3>
+        <div id="core-slots" class="slot-grid"></div>
+        <div class="cap-control">
+          <label for="cap-slider">Max agents for this run <output id="cap-value">–</output></label>
+          <input id="cap-slider" type="range" min="1" max="24" value="24" disabled>
+          <p class="hint">Lowering it never stops running work — it only holds back new work.</p>
+        </div>
+        <p id="swarm" class="hint"></p>
+      </div>
+    </section>
+  </main>
+
+  <section id="drawer" class="drawer" aria-label="Details">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="timeline" aria-selected="true">Timeline</button>
+      <button type="button" role="tab" data-tab="ledger" aria-selected="false">Token ledger</button>
+      <button type="button" role="tab" data-tab="runs" aria-selected="false">Runs</button>
+      <span class="spacer"></span>
+      <button id="drawer-toggle" type="button" class="icon-btn" aria-label="Collapse or expand the drawer">▾</button>
+    </div>
+    <div class="tab-body" data-body="timeline"><ol id="timeline" class="timeline"></ol></div>
+    <div class="tab-body" data-body="ledger" hidden><div id="ledger"></div></div>
+    <div class="tab-body" data-body="runs" hidden><div id="runs"></div></div>
+  </section>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

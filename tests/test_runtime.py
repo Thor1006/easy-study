@@ -476,7 +476,7 @@ def test_open_work_is_marked_interrupted_after_a_crash(tmp_path):
         await rt.start()
         run = await rt.submit(FRUIT)
         await wait_until(lambda: running_nodes(rt, run))
-        shutil.copytree(tmp_path / "live" / "runtime", crash_copy / "runtime")  # state as a crash left it
+        shutil.copytree(tmp_path / "live", crash_copy)  # state exactly as a crash would leave it
         await rt.stop()
         return run
 

@@ -91,12 +91,13 @@ class Run:
 
 
 class Runtime:
-    def __init__(self, root: str | Path | None = None, *, config: Config | None = None,
+    def __init__(self, data_dir: str | Path | None = None, *, config: Config | None = None,
                  adapters: dict | None = None, demo: bool = False) -> None:
-        self.root = Path(root) if root else None
+        """`data_dir` holds state/ and cache/ (None = in memory only)."""
+        self.data_dir = Path(data_dir) if data_dir else None
         self.config = config or Config.load()
         self.demo = demo
-        rdir = self.root / "runtime" if self.root else None
+        rdir = self.data_dir
         self.store = ObjectStore(rdir / "cache" if rdir else None)
         journal = Journal(rdir / "state" / "journal" / "journal.jsonl" if rdir else None,
                           fsync=bool(self.config.runtime["fsync"]))
@@ -389,3 +390,39 @@ class Runtime:
 
     def result_content(self, ref: str) -> dict:
         return self.store.get(ref)
+
+
+LIVE_DATA_DIR = Path(__file__).resolve().parent.parent / "runtime"
+DEMO_DATA_DIR = LIVE_DATA_DIR / "demo"
+
+
+def data_dir_for(demo: bool) -> Path:
+    return DEMO_DATA_DIR if demo else LIVE_DATA_DIR
+
+
+def build_runtime(*, demo: bool = False, data_dir: str | Path | None = None,
+                  config: Config | None = None) -> Runtime:
+    """Create a runtime with simulated adapters (demo) or the real Claude Code / Codex CLIs."""
+    import shutil
+
+    from .adapters.claude_code import ClaudeCodeAdapter
+    from .adapters.codex import CodexAdapter
+    from .adapters.fake import FakeAdapter, demo_delays
+
+    config = config or Config.load()
+    data_dir = Path(data_dir) if data_dir else data_dir_for(demo)
+    if demo:
+        adapters = {p: FakeAdapter(p, delays=demo_delays()) for p in ("claude", "codex")}
+    else:
+        adapters = {}
+        sandbox = data_dir / "sandbox"
+        claude_cmd = config.providers.get("claude", {}).get("command", "claude")
+        codex_cmd = config.providers.get("codex", {}).get("command", "codex")
+        if shutil.which(claude_cmd):
+            adapters["claude"] = ClaudeCodeAdapter(claude_cmd, sandbox / "claude")
+        if shutil.which(codex_cmd):
+            adapters["codex"] = CodexAdapter(codex_cmd, sandbox / "codex")
+        if not adapters:
+            raise RuntimeError("Neither the claude nor the codex CLI was found on PATH. "
+                               "Install one, or use --demo for simulated models.")
+    return Runtime(data_dir, config=config, adapters=adapters, demo=demo)
