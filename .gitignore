@@ -12,3 +12,4 @@ runtime/logs/
 runtime/sandbox/
 runtime/demo/
 runtime/host.json
+runtime/owner-session
