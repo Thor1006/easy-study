@@ -11,6 +11,7 @@ import json
 from functools import lru_cache
 
 from .registry import REPO_ROOT
+from .illustrations import VISUAL_INSTRUCTIONS
 
 SKILLS_DIR = REPO_ROOT / "runtime" / "skills"
 
@@ -31,7 +32,8 @@ FALLBACK_SKILL = (
 @lru_cache(maxsize=None)
 def load_skill(role: str) -> str:
     path = SKILLS_DIR / SKILL_FILES.get(role, "performance.md")
-    return path.read_text(encoding="utf-8") if path.exists() else FALLBACK_SKILL
+    content = path.read_text(encoding="utf-8") if path.exists() else FALLBACK_SKILL
+    return content + (VISUAL_INSTRUCTIONS if role != "planner" else "")
 
 
 def _nullable(schema: dict) -> dict:

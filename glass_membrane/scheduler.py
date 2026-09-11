@@ -20,7 +20,7 @@ from .adapters.base import Invocation, ModelResult, Usage
 from .blackboard import FAILED, RUNNING, TIERS, WAITING
 from .events import Envelope, EventType, FailureCode
 from .focus import FocusContract
-from .registry import TIER_DOWN, TIER_UP
+from .registry import Binding, TIER_DOWN, TIER_UP
 from .roles import load_skill, render_core_prompt, schema_for
 from .state import ResultProposal
 
@@ -107,12 +107,20 @@ class Scheduler:
             if run.live_agents + 1 > run.max_agents:
                 run.status_line = f"Waiting: agent limit {run.max_agents} reached"
                 return
-            slot = rt.slots.idle_core(node["tier"])
+            preferred = node.get("preferred_core")
+            slot = rt.slots.cores.get(preferred) if preferred else rt.slots.idle_core(node["tier"])
+            if slot and (not slot.enabled or slot.status != "idle"):
+                continue
             if slot is None:
                 return
-            binding = self._acquire_binding(node["tier"], avoid=node.get("avoid_provider"))
+            override = node.get("binding_override")
+            if override:
+                candidate = Binding(**override)
+                binding = candidate if rt.pools.try_acquire(candidate.provider, "work") else None
+            else:
+                binding = self._acquire_binding(node["tier"], avoid=node.get("avoid_provider"))
             if binding is None:
-                candidates = rt.registry.bindings(node["tier"])
+                candidates = [Binding(**override)] if override else rt.registry.bindings(node["tier"])
                 if candidates and not any(rt.pools.available(b.provider) for b in candidates):
                     until = min(rt.pools.pools[b.provider].unavailable_until for b in candidates)
                     self._fail(run, task_id, [], FailureCode.BUDGET_EXHAUSTED.value,

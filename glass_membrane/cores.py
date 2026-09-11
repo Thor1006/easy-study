@@ -33,6 +33,7 @@ class Slot:
     children: int = 0
     started_at: float | None = None
     assignments: int = 0
+    enabled: bool = True
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -47,7 +48,7 @@ class SlotTable:
         return self.cores.get(slot_id) or self.filters[slot_id]
 
     def idle_core(self, tier: str) -> Slot | None:
-        idle = [s for s in self.cores.values() if s.status == "idle"]
+        idle = [s for s in self.cores.values() if s.status == "idle" and s.enabled]
         if not idle:
             return None
         want = TIERS.index(tier) if tier in TIERS else 1
@@ -82,7 +83,7 @@ class SlotTable:
         slot.started_at = None
 
     def idle_core_count(self) -> int:
-        return sum(1 for s in self.cores.values() if s.status == "idle")
+        return sum(1 for s in self.cores.values() if s.status == "idle" and s.enabled)
 
     def snapshot(self) -> dict:
         return {"filters": [s.to_dict() for s in self.filters.values()],

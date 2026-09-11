@@ -138,6 +138,11 @@ def _worker(inv: Invocation) -> dict:
         answer = f"[part {data['partition']}] {answer}"
     if data.get("checkpoint"):
         answer += " (Continued from a checkpoint after re-binding.)"
+    if any(word in goal.lower() for word in ("illustrate", "diagram", "chart")):
+        visual = {"type": "flow", "title": "From question to answer",
+                  "steps": ["Understand your question", "Gather relevant context", "Reason and check", "Explain the answer"],
+                  "caption": "Simulated example: no provider was contacted."}
+        answer += "\n\n```silicate\n" + json.dumps(visual) + "\n```"
     answer += _constraint_note(data)
     return {"answer": answer, "summary": _first_sentence(answer), "confidence": 0.8,
             "uncertainty": None, "status": "COMPLETE", "shift": None}

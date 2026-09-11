@@ -84,10 +84,13 @@ class Run:
         self.done_event.set()
 
     def to_dict(self) -> dict:
-        return {k: getattr(self, k) for k in (
+        from .illustrations import answer_parts
+        data = {k: getattr(self, k) for k in (
             "id", "text", "created_at", "max_agents", "source", "status", "kind", "answer", "answered_by",
             "task_id", "target_run", "error", "route", "info", "experiment", "live_agents", "peak_agents",
             "live_processes", "peak_processes", "calls", "cost_usd", "status_line", "finished_at")}
+        data["answer_parts"] = answer_parts(self.answer)
+        return data
 
 
 class Runtime:

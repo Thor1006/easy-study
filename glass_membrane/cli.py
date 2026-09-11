@@ -258,6 +258,9 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--port", type=int, default=0)
         p.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
 
+    p = sub.add_parser("desktop", help="open the native Tkinter Silicate app")
+    p.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
+
     p = sub.add_parser("run", help="submit a request")
     p.add_argument("text")
     p.add_argument("--max-agents", type=int, default=None)
@@ -298,7 +301,11 @@ def main(argv: list[str] | None = None) -> None:
     commands = {"ui": lambda a: cmd_ui(a, True), "serve": lambda a: cmd_ui(a, False), "run": cmd_run,
                 "steer": cmd_steer, "cap": cmd_cap, "cancel": cmd_cancel, "status": cmd_status,
                 "replay": cmd_replay, "doctor": cmd_doctor, "probe": cmd_probe}
-    commands[args.command](args)
+    if args.command == "desktop":
+        from .desktop import main as desktop_main
+        desktop_main(["--demo"] if args.demo else [])
+    else:
+        commands[args.command](args)
 
 
 if __name__ == "__main__":

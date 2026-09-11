@@ -11,7 +11,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 const EXAMPLES = [
-  "2x2",
+  "Illustrate how a question moves through Glass Membrane",
   "Compare 3 sorting algorithms for nearly-sorted data",
   "Compare apples, oranges and pears for a picnic",
 ];
@@ -175,7 +175,7 @@ function replyFor(run) {
     if (run.calls) parts.push(plural(run.calls, "provider call"));
     if (run.info && run.info.rejected_results) parts.push(`${plural(run.info.rejected_results, "stale result")} rejected`);
     return h("div", { class: "bubble reply" },
-      h("div", { class: "answer", text: run.answer || "" }),
+      illustratedAnswer(run),
       h("div", { class: "by", text: parts.filter(Boolean).join(" · ") }));
   }
   if (run.status === "failed" || run.status === "cancelled") {
@@ -194,7 +194,7 @@ function renderMessages() {
   const list = [...runs()].reverse();
   if (!list.length) {
     box.replaceChildren(h("div", { class: "empty" },
-      h("p", { text: "Try one of these to see the runtime work:" }),
+      h("p", { text: "A question is a good place to start." }),
       ...EXAMPLES.map(text => h("button", {
         class: "chip", type: "button", text,
         onclick: () => { $("#input").value = text; $("#input").focus(); },

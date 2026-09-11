@@ -7,6 +7,8 @@
   <title>Silicate · Glass Membrane</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 29 9.5v13L16 30 3 22.5v-13z' fill='%236ea8ff' fill-opacity='.35' stroke='%232f6fed' stroke-width='2'/%3E%3Cpath d='M16 9 23 13v7l-7 4-7-4v-7z' fill='%232f6fed'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/friendly.css">
+  <script src="/static/illustrations.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
@@ -15,7 +17,7 @@
       <span class="logo" aria-hidden="true"></span>
       <div class="brand-text">
         <strong>Silicate</strong>
-        <span class="sub">Glass Membrane operator</span>
+        <span class="sub">Space to think clearly</span>
       </div>
     </div>
     <span id="mode-badge" class="badge" hidden></span>
@@ -26,7 +28,7 @@
 
   <main class="layout">
     <section class="panel conversation" aria-labelledby="conv-title">
-      <div class="panel-head"><h2 id="conv-title">Conversation</h2></div>
+      <div class="panel-head"><h2 id="conv-title">Let's make it clear.</h2></div>
       <div id="messages" class="messages" aria-live="polite"></div>
       <form id="composer" class="composer" autocomplete="off">
         <div id="mode-switch" class="segmented" role="radiogroup" aria-label="What to do with your message" hidden>
@@ -47,7 +49,7 @@
 
     <section class="panel map" aria-labelledby="map-title">
       <div class="panel-head">
-        <h2 id="map-title">Live map</h2>
+        <h2 id="map-title">How your answer comes together</h2>
         <span id="run-meta" class="meta"></span>
       </div>
       <div id="status-line" class="status-line" role="status">Waiting for your first request.</div>
@@ -60,7 +62,7 @@
 
     <section class="panel agents" aria-labelledby="agents-title">
       <div class="panel-head">
-        <h2 id="agents-title">Agents</h2>
+        <h2 id="agents-title">Your thinking team</h2>
         <span id="agent-summary" class="meta"></span>
       </div>
       <div class="agents-body">

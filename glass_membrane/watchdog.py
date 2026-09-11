@@ -21,13 +21,12 @@ class Watchdog:
         self.rt = rt
 
     async def run(self) -> None:
-        interval = float(self.rt.config.runtime["watchdog_interval_s"])
         while True:
             try:
                 self.tick()
             except Exception:  # the watchdog must survive its own bugs
                 log.exception("watchdog tick failed")
-            await asyncio.sleep(interval)
+            await asyncio.sleep(float(self.rt.config.runtime["watchdog_interval_s"]))
 
     def tick(self) -> None:
         rt = self.rt

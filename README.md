@@ -14,6 +14,43 @@ Glass Membrane routes each request through an eight-slot front-end filter, and, 
 
 ## Start it (easiest)
 
+### Native Python desktop
+
+Double-click **`Start Silicate Desktop.cmd`** for the new Tkinter app, or
+**`Start Silicate Desktop (demo).cmd`** to try simulated models without provider usage.
+It uses Python 3.11+ with Tcl/Tk and the existing runtime; no extra GUI packages are needed.
+You can also run `gm desktop` or `gm --demo desktop` from the project environment.
+
+The desktop has question history, a spacious answer area, inline illustrations,
+an activity tab, steering, cancellation, team limits, and copy/save actions.
+It now uses a plain native ttk layout.
+Press **Ctrl+Enter** to send. It connects to an existing host of the same mode
+when available, otherwise starts its own. Closing an owned runtime stops its work;
+closing a client of an existing host leaves that host running.
+
+**Owner override:** `Start Silicate Override.cmd` opens a separate session with
+editable runtime configuration, model bindings, pause/resume dispatch, node/core
+reassignment, routing experiments, state/queue inspection, profile export and
+checkpoints. `Start Silicate Override (demo).cmd` uses simulated providers.
+Overrides apply to that session, not an already-running normal host. See
+[`docs/SILICATE_DESKTOP.md`](docs/SILICATE_DESKTOP.md) for controls and their scope.
+
+### Illustrated answers
+
+Both browser and desktop Silicate support AI-authored **bar charts, step diagrams,
+and comparison tables**. Models receive the illustration format automatically;
+ask for a diagram or let the model choose when a visual helps. Demo mode includes
+a clearly labeled flow-diagram sample: “Illustrate how a question moves through Glass Membrane”.
+
+Illustrations are bounded JSON inside a `silicate` fenced block in the answer.
+The runtime validates the data and both interfaces draw native elements; generated
+HTML, scripts, and arbitrary Python are never executed. Invalid blocks remain
+readable text. Charts support signed values and include labels/captions.
+This is diagram/chart rendering, not photorealistic image generation.
+Saving an answer preserves its text and illustration data as Markdown.
+
+### Browser version
+
 Double-click **`Start Glass Membrane.cmd`** in this folder. On the first run it sets up Python for you; every time, it checks that everything is ready (`gm doctor`, which uses no quota), then opens Silicate in your browser. Keep its window open while you use Silicate and press **Ctrl+C** in it to stop.
 
 **`Start Glass Membrane (demo).cmd`** does the same with simulated models — nothing is sent to any provider.
