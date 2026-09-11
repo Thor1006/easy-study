@@ -17,8 +17,10 @@ import subprocess
 import time
 
 from .adapters.base import Invocation
+from .adapters.process import windows_tool
 from .registry import Config
-from .runtime import LIVE_DATA_DIR, build_runtime
+from .runtime import LIVE_DATA_DIR, build_live_adapters
+from .swarm import SwarmGovernor
 
 PROBE_SCHEMA = {"type": "object", "additionalProperties": False, "required": ["ok", "echo"],
                 "properties": {"ok": {"type": "boolean"}, "echo": {"type": "string"}}}
@@ -29,7 +31,7 @@ def _memory_mb(image: str) -> float | None:
     if os.name != "nt":
         return None
     try:
-        out = subprocess.run(["tasklist", "/FO", "CSV", "/NH", "/FI", f"IMAGENAME eq {image}"],
+        out = subprocess.run([windows_tool("tasklist.exe"), "/FO", "CSV", "/NH", "/FI", f"IMAGENAME eq {image}"],
                              capture_output=True, text=True, timeout=10).stdout
     except (OSError, subprocess.SubprocessError):
         return None
@@ -52,11 +54,12 @@ async def _sample_memory(image: str, stop: asyncio.Event, baseline: float, peak:
 
 
 async def run_probe(providers: list[str], levels: list[int]) -> dict:
-    runtime = build_runtime(demo=False)
-    config: Config = runtime.config
+    # Adapters only: a live Silicate host may be running, and it owns the runtime journal.
+    config = Config.load()
+    adapters = build_live_adapters(config, LIVE_DATA_DIR)
     report = {"started_at": time.time(), "results": []}
     for provider in providers:
-        adapter = runtime.adapters.get(provider)
+        adapter = adapters.get(provider)
         if adapter is None:
             print(f"{provider}: CLI not found — skipped")
             continue
@@ -75,7 +78,8 @@ async def run_probe(providers: list[str], levels: list[int]) -> dict:
                 system_prompt="You are a connectivity probe. Reply with JSON only.",
                 prompt=f'Return {{"ok": true, "echo": "{i}"}} exactly.', schema=PROBE_SCHEMA,
                 model=binding.model if binding else None, effort=binding.effort if binding else None,
-                timeout_s=180, max_budget_usd=0.5) for i in range(level)]
+                timeout_s=180, max_budget_usd=0.5,
+                extra_args=SwarmGovernor.provider_settings(provider, 0)[1]) for i in range(level)]
             started = time.monotonic()
             results = await asyncio.gather(*(adapter.invoke(inv) for inv in invocations))
             elapsed = time.monotonic() - started

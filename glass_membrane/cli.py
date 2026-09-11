@@ -8,6 +8,7 @@
     gm cancel RUN                  cancel a run
     gm status [RUN]                show the host, providers, and runs
     gm replay [--demo]             rebuild state from the journal (read-only) and summarise it
+    gm doctor [--live]             check that everything is ready (no quota used unless --live)
     gm probe --confirm             measure how many parallel calls your plans sustain (uses quota)
 
 The CLI talks to a running host when there is one, so steers from here and
@@ -229,6 +230,12 @@ def cmd_replay(args) -> None:
               f"{rejections} rejected result(s)  {task['goal'][:50]}")
 
 
+def cmd_doctor(args) -> None:
+    from .doctor import run_doctor
+
+    raise SystemExit(run_doctor(demo=args.demo, live=args.live))
+
+
 def cmd_probe(args) -> None:
     from .probe import run_probe
 
@@ -271,6 +278,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("run", nargs="?")
     p = sub.add_parser("replay", help="rebuild state from the journal (read-only)")
     p.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
+    p = sub.add_parser("doctor", help="check that everything is ready (no quota used unless --live)")
+    p.add_argument("--live", action="store_true", help="also make one tiny real call per provider")
+    p.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     p = sub.add_parser("probe", help="measure parallel capacity (uses quota)")
     p.add_argument("--confirm", action="store_true")
     p.add_argument("--levels", default="1,3,6,12")
@@ -287,7 +297,7 @@ def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     commands = {"ui": lambda a: cmd_ui(a, True), "serve": lambda a: cmd_ui(a, False), "run": cmd_run,
                 "steer": cmd_steer, "cap": cmd_cap, "cancel": cmd_cancel, "status": cmd_status,
-                "replay": cmd_replay, "probe": cmd_probe}
+                "replay": cmd_replay, "doctor": cmd_doctor, "probe": cmd_probe}
     commands[args.command](args)
 
 

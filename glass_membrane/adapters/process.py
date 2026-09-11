@@ -19,6 +19,11 @@ from typing import Callable
 STREAM_LIMIT = 32 * 1024 * 1024  # stream-json lines can be large
 
 
+def windows_tool(name: str) -> str:
+    """Full path to a System32 tool, so a damaged PATH cannot break process cleanup."""
+    return os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", name)
+
+
 @dataclass
 class ProcessResult:
     returncode: int | None
@@ -41,7 +46,7 @@ async def kill_tree(proc: asyncio.subprocess.Process) -> None:
         return
     if os.name == "nt":
         killer = await asyncio.create_subprocess_exec(
-            "taskkill", "/PID", str(proc.pid), "/T", "/F",
+            windows_tool("taskkill.exe"), "/PID", str(proc.pid), "/T", "/F",
             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
         await killer.wait()
     else:

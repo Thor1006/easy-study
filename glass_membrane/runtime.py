@@ -400,13 +400,27 @@ def data_dir_for(demo: bool) -> Path:
     return DEMO_DATA_DIR if demo else LIVE_DATA_DIR
 
 
-def build_runtime(*, demo: bool = False, data_dir: str | Path | None = None,
-                  config: Config | None = None) -> Runtime:
-    """Create a runtime with simulated adapters (demo) or the real Claude Code / Codex CLIs."""
+def build_live_adapters(config: Config, data_dir: str | Path = LIVE_DATA_DIR) -> dict:
+    """Adapters for the installed Claude Code / Codex CLIs (no runtime state is touched)."""
     import shutil
 
     from .adapters.claude_code import ClaudeCodeAdapter
     from .adapters.codex import CodexAdapter
+
+    sandbox = Path(data_dir) / "sandbox"
+    adapters = {}
+    claude_cmd = config.providers.get("claude", {}).get("command", "claude")
+    codex_cmd = config.providers.get("codex", {}).get("command", "codex")
+    if shutil.which(claude_cmd):
+        adapters["claude"] = ClaudeCodeAdapter(claude_cmd, sandbox / "claude")
+    if shutil.which(codex_cmd):
+        adapters["codex"] = CodexAdapter(codex_cmd, sandbox / "codex")
+    return adapters
+
+
+def build_runtime(*, demo: bool = False, data_dir: str | Path | None = None,
+                  config: Config | None = None) -> Runtime:
+    """Create a runtime with simulated adapters (demo) or the real Claude Code / Codex CLIs."""
     from .adapters.fake import FakeAdapter, demo_delays
 
     config = config or Config.load()
@@ -414,14 +428,7 @@ def build_runtime(*, demo: bool = False, data_dir: str | Path | None = None,
     if demo:
         adapters = {p: FakeAdapter(p, delays=demo_delays()) for p in ("claude", "codex")}
     else:
-        adapters = {}
-        sandbox = data_dir / "sandbox"
-        claude_cmd = config.providers.get("claude", {}).get("command", "claude")
-        codex_cmd = config.providers.get("codex", {}).get("command", "codex")
-        if shutil.which(claude_cmd):
-            adapters["claude"] = ClaudeCodeAdapter(claude_cmd, sandbox / "claude")
-        if shutil.which(codex_cmd):
-            adapters["codex"] = CodexAdapter(codex_cmd, sandbox / "codex")
+        adapters = build_live_adapters(config, data_dir)
         if not adapters:
             raise RuntimeError("Neither the claude nor the codex CLI was found on PATH. "
                                "Install one, or use --demo for simulated models.")

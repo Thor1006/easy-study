@@ -12,7 +12,13 @@ Glass Membrane routes each request through an eight-slot front-end filter, and, 
 | [`GLASS_MEMBRANE_FULL_SCHEMATIC.md`](GLASS_MEMBRANE_FULL_SCHEMATIC.md) | Components, data flow, correctness scenarios |
 | [`CLAUDE_AGENT_OPERATING_INSTRUCTIONS.md`](CLAUDE_AGENT_OPERATING_INSTRUCTIONS.md) | How models in runtime roles must behave |
 
-## Try it (Windows / PowerShell)
+## Start it (easiest)
+
+Double-click **`Start Glass Membrane.cmd`** in this folder. On the first run it sets up Python for you; every time, it checks that everything is ready (`gm doctor`, which uses no quota), then opens Silicate in your browser. Keep its window open while you use Silicate and press **Ctrl+C** in it to stop.
+
+**`Start Glass Membrane (demo).cmd`** does the same with simulated models — nothing is sent to any provider.
+
+## Try it from a terminal (Windows / PowerShell)
 
 ```powershell
 python -m venv .venv
@@ -46,6 +52,7 @@ Every live call counts against your plan's usage limits. The runtime deliberatel
 | `gm cancel RUN` | Cancel a run |
 | `gm status [RUN]` | Show providers, runs, and a run's task graph |
 | `gm replay` | Rebuild state from the journal, read-only |
+| `gm doctor [--live]` | Check that everything is ready; `--live` adds one tiny real call per provider |
 | `gm probe --confirm` | Measure how many parallel calls your plans sustain (uses quota) |
 
 Put `--demo` before the subcommand for simulated models (`gm --demo run "2x2"`).
