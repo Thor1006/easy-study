@@ -2,11 +2,46 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 
 from .refs import new_id
+
+
+class Signal:
+    """Wake-all notification for asyncio waiters.
+
+    `version` increases on every notify, so a waiter that captured the version
+    before doing work never misses a change that happened in between.
+    """
+
+    def __init__(self) -> None:
+        self.version = 0
+        self._waiters: list[asyncio.Future] = []
+
+    def notify(self) -> None:
+        self.version += 1
+        waiters, self._waiters = self._waiters, []
+        for fut in waiters:
+            if not fut.done():
+                fut.set_result(None)
+
+    async def wait(self, timeout: float | None = None, since: int | None = None) -> bool:
+        if since is not None and self.version != since:
+            return True
+        fut = asyncio.get_running_loop().create_future()
+        self._waiters.append(fut)
+        try:
+            await asyncio.wait_for(fut, timeout)
+            return True
+        except (asyncio.TimeoutError, TimeoutError):
+            return False
+        finally:
+            with contextlib.suppress(ValueError):
+                self._waiters.remove(fut)
 
 
 class EventType(str, Enum):

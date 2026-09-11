@@ -69,12 +69,15 @@ def apply_op(state: dict, op: dict) -> None:
     elif kind == "reissue_nodes":
         for node_id in op["node_ids"]:
             node = task["nodes"][node_id]
-            if node["result_ref"]:
+            had_result = node["result_ref"] is not None
+            if had_result:
                 node["superseded_results"].append(node["result_ref"])
+            validity = op.get("validity", ResultValidity.STALE)
             node.update(
                 status=WAITING, owner=None, lease_id=None, result_ref=None,
-                validity=op.get("validity", ResultValidity.STALE),
-                contract_version=task["version"], attempt=node["attempt"] + 1,
+                validity=validity if (had_result or validity != ResultValidity.STALE) else None,
+                contract_version=task["version"],
+                attempt=node["attempt"] + (1 if op.get("count_attempt", True) else 0),
             )
             node["history"].append({"event": "reissued", "reason": op.get("reason", ""),
                                     "version": task["version"], "ts": op["ts"]})
